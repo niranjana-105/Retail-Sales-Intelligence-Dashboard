@@ -1,0 +1,26 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# MySQL credential files
+.my.cnf
+*.env
+
+# Data exports / dumps (avoid committing large data files)
+*.csv
+*.tsv
+*.xlsx
+*.dump
+*.sql.gz
+
+# Exceptions: keep the SQL scripts in version control
+!sql/
+
+# Temp / logs
+*.log
