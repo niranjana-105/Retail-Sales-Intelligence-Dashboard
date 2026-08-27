@@ -2,7 +2,9 @@ import streamlit as st
 import plotly.express as px
 from db import run_query
 
-st.title("Overview")
+st.set_page_config(page_title="Executive Overview", layout="wide")
+
+st.title("📊 Executive Overview")
 
 # ==========================================================
 # KPI Cards
@@ -10,11 +12,11 @@ st.title("Overview")
 
 kpi_query = """
 SELECT
-    SUM(sales) AS total_sales,
-    SUM(transactions) AS total_transactions,
-    ROUND(AVG(avg_transaction),2) AS avg_transaction,
-    COUNT(DISTINCT region) AS total_regions
-FROM clean_weekly_sales;
+    SUM(f.sales) AS total_sales,
+    SUM(f.transactions) AS total_transactions,
+    ROUND(SUM(f.sales) / NULLIF(SUM(f.transactions), 0), 2) AS avg_transaction,
+    COUNT(DISTINCT f.region_id) AS total_regions
+FROM fact_weekly_sales f;
 """
 
 kpi = run_query(kpi_query)
@@ -35,13 +37,13 @@ with col2:
 
 with col3:
     st.metric(
-        "Avg Transaction",
+        "Avg Order Value",
         f"${kpi.iloc[0]['avg_transaction']:.2f}"
     )
 
 with col4:
     st.metric(
-        "Regions",
+        "Regions Covered",
         int(kpi.iloc[0]['total_regions'])
     )
 
@@ -51,15 +53,15 @@ st.divider()
 # Monthly Sales Trend
 # ==========================================================
 
-st.subheader("Monthly Sales Trend")
+st.subheader("Monthly Sales Trajectory")
 
 monthly_query = """
 SELECT
-    month_number,
-    SUM(sales) AS sales
-FROM clean_weekly_sales
-GROUP BY month_number
-ORDER BY month_number;
+    f.month_number,
+    SUM(f.sales) AS sales
+FROM fact_weekly_sales f
+GROUP BY f.month_number
+ORDER BY f.month_number;
 """
 
 monthly_df = run_query(monthly_query)
@@ -69,23 +71,24 @@ fig = px.line(
     x="month_number",
     y="sales",
     markers=True,
-    title="Monthly Sales"
+    title="Aggregate Monthly Sales Trajectory"
 )
 
 st.plotly_chart(fig, use_container_width=True)
 
 # ==========================================================
-# Sales by Region
+# Sales by Region (Multi-Table JOIN)
 # ==========================================================
 
-st.subheader("Sales by Region")
+st.subheader("Sales by Region (Relational JOIN)")
 
 region_query = """
 SELECT
-    region,
-    SUM(sales) AS sales
-FROM clean_weekly_sales
-GROUP BY region
+    r.region_name AS region,
+    SUM(f.sales) AS sales
+FROM fact_weekly_sales f
+INNER JOIN dim_region r ON f.region_id = r.region_id
+GROUP BY r.region_name
 ORDER BY sales DESC;
 """
 
@@ -95,23 +98,25 @@ fig = px.bar(
     region_df,
     x="region",
     y="sales",
-    title="Sales by Region"
+    color="sales",
+    title="Regional Revenue Breakdown"
 )
 
 st.plotly_chart(fig, use_container_width=True)
 
 # ==========================================================
-# Platform Distribution
+# Platform Distribution (Multi-Table JOIN)
 # ==========================================================
 
-st.subheader("Retail vs Shopify")
+st.subheader("Platform Distribution (Retail vs Shopify)")
 
 platform_query = """
 SELECT
-    platform,
-    SUM(sales) AS sales
-FROM clean_weekly_sales
-GROUP BY platform;
+    p.platform_name AS platform,
+    SUM(f.sales) AS sales
+FROM fact_weekly_sales f
+INNER JOIN dim_platform p ON f.platform_id = p.platform_id
+GROUP BY p.platform_name;
 """
 
 platform_df = run_query(platform_query)
@@ -120,7 +125,7 @@ fig = px.pie(
     platform_df,
     names="platform",
     values="sales",
-    title="Platform Distribution"
+    title="Revenue Distribution by Sales Channel"
 )
 
 st.plotly_chart(fig, use_container_width=True)

@@ -2,7 +2,9 @@ import streamlit as st
 import plotly.express as px
 from db import run_query
 
-st.title("Sales Analysis")
+st.set_page_config(page_title="Sales Performance Analysis", layout="wide")
+
+st.title("📈 Sales Performance Analysis")
 
 # ==========================================================
 # Year Filter
@@ -10,7 +12,7 @@ st.title("Sales Analysis")
 
 years = run_query("""
 SELECT DISTINCT calendar_year
-FROM clean_weekly_sales
+FROM fact_weekly_sales
 ORDER BY calendar_year;
 """)
 
@@ -25,19 +27,19 @@ st.divider()
 # Sales by Month
 # ==========================================================
 
-st.subheader("Monthly Sales")
+st.subheader("Monthly Sales Trend")
 
-query = f"""
+query = """
 SELECT
-    month_number,
-    SUM(sales) AS total_sales
-FROM clean_weekly_sales
-WHERE calendar_year = {selected_year}
-GROUP BY month_number
-ORDER BY month_number;
+    f.month_number,
+    SUM(f.sales) AS total_sales
+FROM fact_weekly_sales f
+WHERE f.calendar_year = %s
+GROUP BY f.month_number
+ORDER BY f.month_number;
 """
 
-df = run_query(query)
+df = run_query(query, params=(selected_year,))
 
 fig = px.line(
     df,
@@ -50,83 +52,85 @@ fig = px.line(
 st.plotly_chart(fig, use_container_width=True)
 
 # ==========================================================
-# Sales by Region
+# Sales by Region (Relational INNER JOIN)
 # ==========================================================
 
-st.subheader("Sales by Region")
+st.subheader("Regional Performance (fact_weekly_sales JOIN dim_region)")
 
-query = f"""
+query = """
 SELECT
-    region,
-    SUM(sales) AS total_sales
-FROM clean_weekly_sales
-WHERE calendar_year = {selected_year}
-GROUP BY region
+    r.region_name AS region,
+    SUM(f.sales) AS total_sales
+FROM fact_weekly_sales f
+INNER JOIN dim_region r ON f.region_id = r.region_id
+WHERE f.calendar_year = %s
+GROUP BY r.region_name
 ORDER BY total_sales DESC;
 """
 
-df = run_query(query)
+df = run_query(query, params=(selected_year,))
 
 fig = px.bar(
     df,
     x="region",
     y="total_sales",
     color="total_sales",
-    title=f"Regional Sales ({selected_year})"
+    title=f"Regional Sales Breakdown ({selected_year})"
 )
 
 st.plotly_chart(fig, use_container_width=True)
 
 # ==========================================================
-# Sales by Platform
+# Sales by Platform (Relational INNER JOIN)
 # ==========================================================
 
-st.subheader("Sales by Platform")
+st.subheader("Platform Revenue Share (fact_weekly_sales JOIN dim_platform)")
 
-query = f"""
+query = """
 SELECT
-    platform,
-    SUM(sales) AS total_sales
-FROM clean_weekly_sales
-WHERE calendar_year = {selected_year}
-GROUP BY platform;
+    p.platform_name AS platform,
+    SUM(f.sales) AS total_sales
+FROM fact_weekly_sales f
+INNER JOIN dim_platform p ON f.platform_id = p.platform_id
+WHERE f.calendar_year = %s
+GROUP BY p.platform_name;
 """
 
-df = run_query(query)
+df = run_query(query, params=(selected_year,))
 
 fig = px.pie(
     df,
     names="platform",
     values="total_sales",
-    title=f"Platform Sales ({selected_year})"
+    title=f"Platform Sales Contribution ({selected_year})"
 )
 
 st.plotly_chart(fig, use_container_width=True)
 
 # ==========================================================
-# Top 10 Regions
+# Top 10 Regions Table (Relational INNER JOIN)
 # ==========================================================
 
-st.subheader("Top Performing Regions")
+st.subheader("Top Performing Regions Leaderboard")
 
-query = f"""
+query = """
 SELECT
-    region,
-    SUM(sales) AS total_sales,
-    SUM(transactions) AS total_transactions,
-    ROUND(AVG(avg_transaction),2) AS avg_transaction
-FROM clean_weekly_sales
-WHERE calendar_year = {selected_year}
-GROUP BY region
+    r.region_name AS region,
+    SUM(f.sales) AS total_sales,
+    SUM(f.transactions) AS total_transactions,
+    ROUND(SUM(f.sales) / NULLIF(SUM(f.transactions), 0), 2) AS avg_transaction
+FROM fact_weekly_sales f
+INNER JOIN dim_region r ON f.region_id = r.region_id
+WHERE f.calendar_year = %s
+GROUP BY r.region_name
 ORDER BY total_sales DESC
 LIMIT 10;
 """
 
-df = run_query(query)
+df = run_query(query, params=(selected_year,))
 
 st.dataframe(
     df,
     use_container_width=True,
     hide_index=True
 )
-

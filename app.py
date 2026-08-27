@@ -1,36 +1,38 @@
 import streamlit as st
 
 st.set_page_config(
-    page_title="Data Mart Dashboard",
+    page_title="Retail Sales Intelligence Dashboard",
     layout="wide"
 )
 
-st.title("Data Mart Analytics Dashboard")
+st.title("🛒 Retail Sales Intelligence & Analytics Dashboard")
 
 st.markdown(
 """
-Welcome to the **Data Mart Analytics Dashboard**.
+Welcome to the **Retail Sales Intelligence & Analytics Dashboard**.
 
-This dashboard provides interactive insights into the
-Data Mart dataset.
+This enterprise-grade application provides interactive business intelligence, customer cohort analysis, and omni-channel performance analytics across multi-region retail transactions.
 
-Use the sidebar to navigate through the dashboard.
+Use the sidebar to navigate through the dashboard modules.
+
 
 ### Available Pages
 
-• Overview
+• **Overview**: High-level KPIs, monthly trends, and regional performance
 
-• Sales Analysis
+• **Sales Analysis**: Dynamic yearly filters, monthly trends, and top revenue regions
 
-• Customer Analysis
+• **Customer Analysis**: Demographic segmentation (Age Bands, Couples vs Families)
 
-• Business Insights
+• **Business Insights**: Packaging change impact analysis and annual trends
 
-### Technologies
+• **Channel & Market Expansion**: Omni-channel dynamics (Retail vs Shopify), demographic digital adoption, and CRUD data management
 
-- MySQL
-- Streamlit
-- Plotly
-- Pandas
+### Architecture & Technologies
+
+- **Database**: 4-Table Star Schema (`dim_region`, `dim_platform`, `dim_segment`, `fact_weekly_sales`)
+- **SQL Engines**: MySQL & SQLite (Dual Engine with Zero-Config Auto-Ingestion)
+- **Frontend**: Streamlit & Plotly Interactive Visualizations
+- **Data Engineering**: Python & Pandas ETL Pipeline
 """
-)
+)

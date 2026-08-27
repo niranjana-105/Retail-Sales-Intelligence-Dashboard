@@ -1,11 +1,6 @@
 /*
 ===============================================================================
 Advanced Business Insights
-Author: Niranjana Nitin
-
-Description:
-Additional SQL analyses built on top of the original
-8 Week SQL Challenge - Data Mart dataset.
 
 These queries demonstrate:
 - Common Table Expressions (CTEs)
@@ -357,3 +352,122 @@ FROM clean_weekly_sales
 GROUP BY customer_type
 
 ORDER BY total_sales DESC;
+
+
+
+-- ============================================================================
+-- Query 11: Multi-Table INNER JOIN (Star Schema Demographics Performance)
+-- Purpose:
+-- Demonstrates 3-way INNER JOIN between Fact table and Dimension tables:
+-- dim_region, dim_platform, and dim_segment.
+-- ============================================================================
+
+SELECT
+    r.region_name,
+    p.platform_name,
+    s.demographic,
+    s.age_band,
+    SUM(f.sales) AS total_revenue,
+    SUM(f.transactions) AS total_orders,
+    ROUND(SUM(f.sales) / NULLIF(SUM(f.transactions), 0), 2) AS avg_order_value
+FROM fact_weekly_sales f
+INNER JOIN dim_region r ON f.region_id = r.region_id
+INNER JOIN dim_platform p ON f.platform_id = p.platform_id
+INNER JOIN dim_segment s ON f.segment_id = s.segment_id
+WHERE s.segment_code != 'unknown'
+GROUP BY r.region_name, p.platform_name, s.demographic, s.age_band
+ORDER BY total_revenue DESC;
+
+
+
+-- ============================================================================
+-- Query 12: LEFT JOIN Analysis (Known vs Unknown Customer Demographics)
+-- Purpose:
+-- Uses LEFT JOIN to evaluate how much revenue comes from unclassified
+-- customer segments across different platforms.
+-- ============================================================================
+
+SELECT
+    p.platform_name,
+    CASE 
+        WHEN s.segment_code = 'unknown' THEN 'Unclassified Segment'
+        ELSE 'Identified Segment'
+    END AS segment_status,
+    COUNT(f.sales_id) AS record_count,
+    SUM(f.sales) AS total_revenue,
+    ROUND(
+        SUM(f.sales) * 100.0 / SUM(SUM(f.sales)) OVER (PARTITION BY p.platform_name),
+        2
+    ) AS platform_revenue_share_pct
+FROM fact_weekly_sales f
+LEFT JOIN dim_platform p ON f.platform_id = p.platform_id
+LEFT JOIN dim_segment s ON f.segment_id = s.segment_id
+GROUP BY p.platform_name, segment_status
+ORDER BY p.platform_name, total_revenue DESC;
+
+
+
+-- ============================================================================
+-- Query 13: 4-Week Rolling Moving Average (Window Function ROWS BETWEEN)
+-- Purpose:
+-- Calculates a smoothed 4-week moving average of sales per region
+-- to detect seasonal trends and smoothen out short-term fluctuations.
+-- ============================================================================
+
+WITH weekly_regional_sales AS (
+    SELECT
+        f.week_date,
+        f.calendar_year,
+        f.week_number,
+        r.region_name,
+        SUM(f.sales) AS weekly_sales
+    FROM fact_weekly_sales f
+    JOIN dim_region r ON f.region_id = r.region_id
+    GROUP BY f.week_date, f.calendar_year, f.week_number, r.region_name
+)
+SELECT
+    region_name,
+    week_date,
+    calendar_year,
+    week_number,
+    weekly_sales,
+    ROUND(
+        AVG(weekly_sales) OVER (
+            PARTITION BY region_name 
+            ORDER BY week_date 
+            ROWS BETWEEN 3 PRECEDING AND CURRENT ROW
+        ),
+        2
+    ) AS rolling_4week_avg_sales
+FROM weekly_regional_sales
+ORDER BY region_name, week_date;
+
+
+
+-- ============================================================================
+-- Query 14: Customer Segment Revenue Contribution by Platform (JOIN + CTE)
+-- Purpose:
+-- Measures demographic revenue contribution percentage within each sales channel.
+-- ============================================================================
+
+WITH channel_demographics AS (
+    SELECT
+        p.platform_name,
+        s.demographic,
+        SUM(f.sales) AS demographic_sales
+    FROM fact_weekly_sales f
+    JOIN dim_platform p ON f.platform_id = p.platform_id
+    JOIN dim_segment s ON f.segment_id = s.segment_id
+    WHERE s.demographic != 'unknown'
+    GROUP BY p.platform_name, s.demographic
+)
+SELECT
+    platform_name,
+    demographic,
+    demographic_sales,
+    ROUND(
+        demographic_sales * 100.0 / SUM(demographic_sales) OVER (PARTITION BY platform_name),
+        2
+    ) AS demographic_share_pct
+FROM channel_demographics
+ORDER BY platform_name, demographic_share_pct DESC;

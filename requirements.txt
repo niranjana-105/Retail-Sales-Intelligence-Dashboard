@@ -2,3 +2,4 @@ pandas
 mysql-connector-python
 streamlit
 plotly
+python-dotenv

@@ -1,14 +1,21 @@
+import os
 import pandas as pd
 import mysql.connector
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # ----------------------------
 # MySQL Connection
 # ----------------------------
 conn = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    password="chakki2005"   # <-- Change this
+    host=os.getenv("DB_HOST", "localhost"),
+    user=os.getenv("DB_USER", "root"),
+    password=os.getenv("DB_PASSWORD", ""),
+    port=int(os.getenv("DB_PORT", "3306"))
 )
+
 
 cursor = conn.cursor()
 

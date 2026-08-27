@@ -59,8 +59,12 @@ env/
 *.tsv
 *.xlsx
 
-# Keep sample data if you add one later
-#!data/sample.csv
+# Keep dataset required for auto-building the database
+!scripts/weekly_sales.csv
+
+# Ignore local SQLite binary database
+*.db
+
 
 # ==========================================================
 # Database Dumps
