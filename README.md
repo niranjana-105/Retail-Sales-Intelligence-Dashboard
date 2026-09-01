@@ -35,12 +35,12 @@ The platform normalizes 17,000+ multi-region retail sales transactions into an a
 
 ## 🏗️ Database Architecture (Star Schema ERD)
 
-```mermaid
-flowchart LR
-    dim_region -->|region_id| fact_weekly_sales
-    dim_platform -->|platform_id| fact_weekly_sales
-    dim_segment -->|segment_id| fact_weekly_sales
-```
+| Table | Type | Columns |
+|---|---|---|
+| `dim_region` | Dimension | `region_id` PK, `region_name` |
+| `dim_platform` | Dimension | `platform_id` PK, `platform_name` |
+| `dim_segment` | Dimension | `segment_id` PK, `segment_code`, `age_band`, `demographic` |
+| `fact_weekly_sales` | Fact | `sales_id` PK · `region_id` FK · `platform_id` FK · `segment_id` FK · `week_date` · `week_number` · `month_number` · `calendar_year` · `customer_type` · `transactions` · `sales` · `avg_transaction` |
 
 ---
 
