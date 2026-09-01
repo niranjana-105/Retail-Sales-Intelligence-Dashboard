@@ -26,9 +26,9 @@ The platform normalizes 17,000+ multi-region retail sales transactions into an a
 
 ## 💡 Key Business & Predictive Findings
 
-1. **8-Week Forward Planning Edge**: In multi-step forward demand planning (8-week horizon without future ground truth), **XGBoost achieves a 2.11% WAPE vs. Naive Baseline 3.10% WAPE** (~32% relative forecast error reduction).
-2. **Sustainable Packaging Policy Impact**: Analyzing the 2020 sustainable packaging rollout (Week 25) revealed a **-$152.3M (-2.14%)** revenue variance over the standard 12-week evaluation window (Weeks 13–24 vs. Weeks 25–36).
-3. **Omni-Channel Economics**: While physical Retail accounts for the bulk of volume (~97.5% share), **Shopify e-commerce orders command an Average Order Value (~$174)** nearly **5x higher** than physical stores (~$38).
+1. **8-Week Forward Planning Edge**: In multi-step forward demand planning (8-week horizon without future ground truth), **XGBoost achieves 2.11% WAPE vs. Naive Baseline 3.10% WAPE** (~32% relative forecast error reduction).
+2. **Sustainable Packaging Policy Impact**: Analyzing the 2020 sustainable packaging rollout (Week 25) revealed a **-USD 152.3M (-2.14%)** revenue variance over the standard 12-week evaluation window (Weeks 13–24 vs. Weeks 25–36).
+3. **Omni-Channel Economics**: While physical Retail accounts for the bulk of volume (~97.5% share), **Shopify e-commerce orders command an Average Order Value of ~USD 174** — nearly **5x higher** than physical stores (~USD 38).
 4. **Demographic Revenue Concentration**: **Retirees and Families** represent the highest lifetime revenue cohorts across major regional markets (Oceania, Africa, and North America).
 
 ---
@@ -36,20 +36,10 @@ The platform normalizes 17,000+ multi-region retail sales transactions into an a
 ## 🏗️ Database Architecture (Star Schema ERD)
 
 ```mermaid
-flowchart TD
-    subgraph StarSchema ["Retail Sales Star Schema Architecture"]
-        direction TB
-
-        DR["<b>dim_region</b><br/>━━━━━━━━━━━━━<br/>• region_id [PK]<br/>• region_name"]
-        DP["<b>dim_platform</b><br/>━━━━━━━━━━━━━<br/>• platform_id [PK]<br/>• platform_name"]
-        DS["<b>dim_segment</b><br/>━━━━━━━━━━━━━<br/>• segment_id [PK]<br/>• segment_code<br/>• age_band<br/>• demographic"]
-
-        FACT["<b>fact_weekly_sales</b><br/>━━━━━━━━━━━━━━━━━━━━━━━━━<br/>• sales_id [PK]<br/>• week_date, week_number, month_number, calendar_year<br/>• region_id [FK]<br/>• platform_id [FK]<br/>• segment_id [FK]<br/>• customer_type<br/>• transactions<br/>• sales (Revenue USD)<br/>• avg_transaction (AOV)"]
-
-        DR -->|region_id| FACT
-        DP -->|platform_id| FACT
-        DS -->|segment_id| FACT
-    end
+flowchart LR
+    dim_region -->|region_id| fact_weekly_sales
+    dim_platform -->|platform_id| fact_weekly_sales
+    dim_segment -->|segment_id| fact_weekly_sales
 ```
 
 ---
