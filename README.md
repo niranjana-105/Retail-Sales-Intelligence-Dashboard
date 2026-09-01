@@ -36,42 +36,20 @@ The platform normalizes 17,000+ multi-region retail sales transactions into an a
 ## 🏗️ Database Architecture (Star Schema ERD)
 
 ```mermaid
-erDiagram
-    dim_region ||--o{ fact_weekly_sales : contains
-    dim_platform ||--o{ fact_weekly_sales : contains
-    dim_segment ||--o{ fact_weekly_sales : contains
+flowchart TD
+    subgraph StarSchema ["Retail Sales Star Schema Architecture"]
+        direction TB
 
-    dim_region {
-        int region_id PK
-        string region_name
-    }
+        DR["<b>dim_region</b><br/>━━━━━━━━━━━━━<br/>• region_id [PK]<br/>• region_name"]
+        DP["<b>dim_platform</b><br/>━━━━━━━━━━━━━<br/>• platform_id [PK]<br/>• platform_name"]
+        DS["<b>dim_segment</b><br/>━━━━━━━━━━━━━<br/>• segment_id [PK]<br/>• segment_code<br/>• age_band<br/>• demographic"]
 
-    dim_platform {
-        int platform_id PK
-        string platform_name
-    }
+        FACT["<b>fact_weekly_sales</b><br/>━━━━━━━━━━━━━━━━━━━━━━━━━<br/>• sales_id [PK]<br/>• week_date, week_number, month_number, calendar_year<br/>• region_id [FK]<br/>• platform_id [FK]<br/>• segment_id [FK]<br/>• customer_type<br/>• transactions<br/>• sales (Revenue USD)<br/>• avg_transaction (AOV)"]
 
-    dim_segment {
-        int segment_id PK
-        string segment_code
-        string age_band
-        string demographic
-    }
-
-    fact_weekly_sales {
-        int sales_id PK
-        date week_date
-        int week_number
-        int month_number
-        int calendar_year
-        int region_id FK
-        int platform_id FK
-        int segment_id FK
-        string customer_type
-        int transactions
-        float sales
-        float avg_transaction
-    }
+        DR -->|region_id| FACT
+        DP -->|platform_id| FACT
+        DS -->|segment_id| FACT
+    end
 ```
 
 ---
