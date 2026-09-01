@@ -37,40 +37,40 @@ The platform normalizes 17,000+ multi-region retail sales transactions into an a
 
 ```mermaid
 erDiagram
-    dim_region ||--o{ fact_weekly_sales : "region_id"
-    dim_platform ||--o{ fact_weekly_sales : "platform_id"
-    dim_segment ||--o{ fact_weekly_sales : "segment_id"
+    dim_region ||--o{ fact_weekly_sales : contains
+    dim_platform ||--o{ fact_weekly_sales : contains
+    dim_segment ||--o{ fact_weekly_sales : contains
 
     dim_region {
-        int region_id PK "Unique Region Identifier (1, 2, ...)"
-        varchar region_name "Oceania, North America, Asia, Europe, Africa, South America"
+        int region_id PK
+        string region_name
     }
 
     dim_platform {
-        int platform_id PK "Platform Channel Identifier"
-        varchar platform_name "Retail, Shopify"
+        int platform_id PK
+        string platform_name
     }
 
     dim_segment {
-        int segment_id PK "Segment Identifier"
-        varchar segment_code "C1, C2, F1, F2, unknown"
-        varchar age_band "Young Adults, Middle Aged, Retirees"
-        varchar demographic "Couples, Families, unknown"
+        int segment_id PK
+        string segment_code
+        string age_band
+        string demographic
     }
 
     fact_weekly_sales {
-        int sales_id PK "Sales Transaction ID"
-        date week_date "Transaction Week Starting Date"
-        int week_number "ISO Week Number (1 - 52)"
-        int month_number "Month (1 - 12)"
-        int calendar_year "2018, 2019, 2020"
-        int region_id FK "References dim_region(region_id)"
-        int platform_id FK "References dim_platform(platform_id)"
-        int segment_id FK "References dim_segment(segment_id)"
-        varchar customer_type "Guest, Existing, New"
-        int transactions "Total Weekly Completed Orders"
-        decimal sales "Total Gross Revenue ($)"
-        decimal avg_transaction "Average Order Value ($)"
+        int sales_id PK
+        date week_date
+        int week_number
+        int month_number
+        int calendar_year
+        int region_id FK
+        int platform_id FK
+        int segment_id FK
+        string customer_type
+        int transactions
+        float sales
+        float avg_transaction
     }
 ```
 
