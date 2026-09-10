@@ -32,9 +32,17 @@ SPLIT_DATE   = "2020-07-13"      # Last 8 weeks held out for test
 TEST_WEEKS   = 8
 
 FEATURE_COLS = [
-    "lag_1", "lag_2", "lag_4", "lag_8",
-    "rolling_mean_4", "rolling_mean_8", "rolling_std_4",
+    # Autoregressive lags
+    "lag_1", "lag_2", "lag_3", "lag_4", "lag_8", "lag_12",
+    # Rolling window momentum + volatility
+    "rolling_mean_4", "rolling_mean_8", "rolling_mean_12",
+    "rolling_std_4", "rolling_std_8",
+    # Calendar seasonality
     "week_number", "month_number", "quarter", "calendar_year",
+    # Domain feature: transaction volume as leading indicator
+    "transactions",
+    # Policy intervention flag (sustainable packaging rollout, Week 25 2020+)
+    "is_packaging_week",
 ]
 
 
@@ -90,18 +98,25 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     grp = df.groupby(GROUP_COLS)[TARGET_COL]
 
-    # Autoregressive lags
-    for lag in [1, 2, 4, 8]:
+    # Autoregressive lags — extended (1, 2, 3, 4, 8, 12 weeks)
+    for lag in [1, 2, 3, 4, 8, 12]:
         df[f"lag_{lag}"] = grp.shift(lag)
 
     # Rolling window stats (shift(1) first → strictly past-data only)
     shifted = grp.shift(1)
-    df["rolling_mean_4"] = shifted.transform(lambda s: s.rolling(4, min_periods=2).mean())
-    df["rolling_mean_8"] = shifted.transform(lambda s: s.rolling(8, min_periods=4).mean())
-    df["rolling_std_4"]  = shifted.transform(lambda s: s.rolling(4, min_periods=2).std())
+    df["rolling_mean_4"]  = shifted.transform(lambda s: s.rolling(4,  min_periods=2).mean())
+    df["rolling_mean_8"]  = shifted.transform(lambda s: s.rolling(8,  min_periods=4).mean())
+    df["rolling_mean_12"] = shifted.transform(lambda s: s.rolling(12, min_periods=4).mean())
+    df["rolling_std_4"]   = shifted.transform(lambda s: s.rolling(4,  min_periods=2).std())
+    df["rolling_std_8"]   = shifted.transform(lambda s: s.rolling(8,  min_periods=4).std())
 
     # Calendar features
     df["quarter"] = df[DATE_COL].dt.quarter
+
+    # Domain feature: sustainable packaging policy flag (Week 25, 2020 onward)
+    df["is_packaging_week"] = (
+        (df["week_number"] >= 25) & (df["calendar_year"] == 2020)
+    ).astype(int)
 
     # Naive baseline: lag_1 = last week's actual (persistence model for benchmarking)
     df["naive_pred"] = df["lag_1"]

@@ -52,9 +52,14 @@ def main():
     print(f"      Test     : {len(X_test)} panel obs  "
           f"({df_test[DATE_COL].min().date()} to {df_test[DATE_COL].max().date()})")
 
-    # Step 4: Train + Full 5-Metric Evaluation + Save
-    print("\n[4/4] Training XGBoost Regressor...")
+    # Step 4: Hyperparameter Tuning with TimeSeriesSplit GridSearchCV
+    print("\n[4/5] Hyperparameter Tuning (TimeSeriesSplit GridSearchCV)...")
+    print("      This runs 108 parameter combinations x 5 folds. Please wait ~5-10 min...")
     forecaster = XGBoostDemandForecaster()
+    forecaster.tune(X_train, y_train)
+
+    # Step 5: Retrain best estimator on full training set + Evaluate + Save
+    print("\n[5/5] Training best estimator on full training set...")
     forecaster.train(X_train, y_train)
 
     print("\n      Running full 5-metric evaluation suite (including 8-week multi-step horizon)...")

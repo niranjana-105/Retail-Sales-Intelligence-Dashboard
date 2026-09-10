@@ -65,6 +65,50 @@ class XGBoostDemandForecaster:
               f"({X_train.shape[1]} features).")
 
     # ─────────────────────────────────────────────────
+    # Hyperparameter Tuning (TimeSeriesSplit GridSearchCV)
+    # ─────────────────────────────────────────────────
+    def tune(self, X_train: pd.DataFrame, y_train: pd.Series) -> None:
+        """
+        Runs TimeSeriesSplit + GridSearchCV to find optimal XGBoost hyperparameters.
+        Uses TimeSeriesSplit (NOT KFold) to prevent future data leakage during CV —
+        each validation fold is always strictly after its training fold chronologically.
+        Updates self.model with the best estimator found.
+
+        Grid: 108 combinations x 5 folds = 540 fits (~5-10 min on first run).
+        Scoring: neg_mean_absolute_error (MAE-based; final eval still uses WAPE).
+        """
+        from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
+
+        param_grid = {
+            "n_estimators":     [100, 200, 300],
+            "max_depth":        [3, 4, 5],
+            "learning_rate":    [0.01, 0.05, 0.1],
+            "subsample":        [0.7, 0.8],
+            "colsample_bytree": [0.7, 0.8],
+        }
+
+        tscv = TimeSeriesSplit(n_splits=5)
+
+        gs = GridSearchCV(
+            estimator  = self.model,
+            param_grid = param_grid,
+            cv         = tscv,
+            scoring    = "neg_mean_absolute_error",
+            n_jobs     = -1,
+            verbose    = 1,
+        )
+
+        print(f"Running TimeSeriesSplit GridSearchCV "
+              f"({len(param_grid['n_estimators']) * len(param_grid['max_depth']) * len(param_grid['learning_rate']) * len(param_grid['subsample']) * len(param_grid['colsample_bytree'])} combinations x 5 folds)...")
+        gs.fit(X_train, y_train)
+        self.model = gs.best_estimator_
+
+        print("\nBest Hyperparameters Found:")
+        for k, v in gs.best_params_.items():
+            print(f"  {k:22s}: {v}")
+        print(f"  {'Best CV MAE':22s}: {-gs.best_score_:.4f} M")
+
+    # ─────────────────────────────────────────────────
     # 5-Metric Evaluation Suite
     # ─────────────────────────────────────────────────
     def evaluate(self, X_test: pd.DataFrame, y_test: pd.Series,
@@ -151,22 +195,34 @@ class XGBoostDemandForecaster:
 
                 for step_idx, row_test in grp_test.reset_index().iterrows():
                     dt = row_test[DATE_COL]
-                    lag_1 = history[-1]
-                    lag_2 = history[-2] if len(history) >= 2 else lag_1
-                    lag_4 = history[-4] if len(history) >= 4 else lag_1
-                    lag_8 = history[-8] if len(history) >= 8 else lag_1
-                    rm4   = float(np.mean(history[-4:])) if len(history) >= 4 else float(np.mean(history))
-                    rm8   = float(np.mean(history[-8:])) if len(history) >= 8 else float(np.mean(history))
-                    std4  = float(np.std(history[-4:]))  if len(history) >= 4 else 0.0
+                    lag_1  = history[-1]
+                    lag_2  = history[-2]  if len(history) >= 2  else lag_1
+                    lag_3  = history[-3]  if len(history) >= 3  else lag_1
+                    lag_4  = history[-4]  if len(history) >= 4  else lag_1
+                    lag_8  = history[-8]  if len(history) >= 8  else lag_1
+                    lag_12 = history[-12] if len(history) >= 12 else lag_1
+                    rm4    = float(np.mean(history[-4:]))  if len(history) >= 4  else float(np.mean(history))
+                    rm8    = float(np.mean(history[-8:]))  if len(history) >= 8  else float(np.mean(history))
+                    rm12   = float(np.mean(history[-12:])) if len(history) >= 12 else float(np.mean(history))
+                    std4   = float(np.std(history[-4:]))   if len(history) >= 4  else 0.0
+                    std8   = float(np.std(history[-8:]))   if len(history) >= 8  else 0.0
                     wk_num = int(dt.strftime("%W")) + 1
                     mo_num = dt.month
                     qtr    = (mo_num - 1) // 3 + 1
                     yr     = dt.year
+                    # transactions: use actual value from test row (known at forecast time in production)
+                    txn    = float(row_test["transactions"]) if "transactions" in row_test else 0.0
+                    # is_packaging_week: deterministic from date — no leakage
+                    is_pkg = int(wk_num >= 25 and yr == 2020)
 
                     feat = {
-                        "lag_1": lag_1, "lag_2": lag_2, "lag_4": lag_4, "lag_8": lag_8,
-                        "rolling_mean_4": rm4, "rolling_mean_8": rm8, "rolling_std_4": std4,
-                        "week_number": wk_num, "month_number": mo_num, "quarter": qtr, "calendar_year": yr,
+                        "lag_1": lag_1, "lag_2": lag_2, "lag_3": lag_3,
+                        "lag_4": lag_4, "lag_8": lag_8, "lag_12": lag_12,
+                        "rolling_mean_4": rm4, "rolling_mean_8": rm8, "rolling_mean_12": rm12,
+                        "rolling_std_4": std4, "rolling_std_8": std8,
+                        "week_number": wk_num, "month_number": mo_num,
+                        "quarter": qtr, "calendar_year": yr,
+                        "transactions": txn, "is_packaging_week": is_pkg,
                         **stream_dummies
                     }
                     feat_df = pd.DataFrame([feat])[feature_cols]
